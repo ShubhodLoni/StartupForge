@@ -1,0 +1,13 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets
+.env
+!.env.example
+
+# Node
+frontend/node_modules/
+frontend/dist/
