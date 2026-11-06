@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>StartupForge AI – Pipeline Flowchart</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            box-sizing: border-box;
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            --bg: #000;
+            --grid: rgba(255, 255, 255, .07);
+            --ok: #22c55e;
+            --bad: #ef4444;
+            --edge: #3b82f6;
+            --tx: #e5e7eb;
+            --mut: #9ca3af
+        }
+
+        html {
+            scroll-padding-top: env(safe-area-inset-top, 0px)
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+            background-size: 24px 24px;
+            color: var(--tx);
+            font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh
+        }
+
+        main {
+            max-width: 560px;
+            margin: 0 auto;
+            padding: 16px 12px 28px
+        }
+
+        h1 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 4px;
+            letter-spacing: .2px
+        }
+
+        p.sub {
+            margin: 0 0 12px;
+            font-size: 12px;
+            color: var(--mut)
+        }
+
+        .legend {
+            display: flex;
+            gap: 14px;
+            font-size: 12px;
+            color: var(--mut);
+            margin-bottom: 8px;
+            flex-wrap: wrap
+        }
+
+        .legend i {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            margin-right: 6px;
+            vertical-align: -1px
+        }
+
+        svg {
+            width: 100%;
+            height: auto;
+            display: block;
+            touch-action: manipulation
+        }
+
+        .edge {
+            fill: none;
+            stroke: var(--edge);
+            stroke-width: 1.5;
+            opacity: .45;
+            transition: opacity .2s, stroke-width .2s
+        }
+
+        .edge.on {
+            opacity: 1;
+            stroke-width: 2.2;
+            stroke-dasharray: 6 6;
+            animation: flow .6s linear infinite;
+            filter: drop-shadow(0 0 3px var(--edge))
+        }
+
+        .edge.off {
+            opacity: .12
+        }
+
+        @keyframes flow {
+            to {
+                stroke-dashoffset: -12
+            }
+        }
+
+        .node {
+            cursor: pointer
+        }
+
+        .node rect {
+            fill: #050805;
+            stroke-width: 1.5;
+            transition: filter .2s, stroke-width .2s
+        }
+
+        .node.ok rect {
+            stroke: var(--ok);
+            fill: #06150b
+        }
+
+        .node.bad rect {
+            stroke: var(--bad);
+            fill: #1a0808
+        }
+
+        .node.hl rect {
+            stroke-width: 2.6
+        }
+
+        .node.ok.hl rect {
+            filter: drop-shadow(0 0 6px var(--ok))
+        }
+
+        .node.bad.hl rect {
+            filter: drop-shadow(0 0 6px var(--bad))
+        }
+
+        .node text {
+            pointer-events: none;
+            text-anchor: middle
+        }
+
+        .t {
+            font-size: 12px;
+            font-weight: 600;
+            fill: var(--tx)
+        }
+
+        .s {
+            font-size: 9px;
+            fill: var(--mut)
+        }
+
+        .node.ok .dot {
+            fill: var(--ok)
+        }
+
+        .node.bad .dot {
+            fill: var(--bad)
+        }
+
+        .note {
+            font-size: 11px;
+            color: var(--mut);
+            margin-top: 10px
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>StartupForge AI — pipeline</h1>
+        <p class="sub">Hover (or tap) a node to animate its edges. Terminating nodes turn red on hover.</p>
+        <div class="legend"><span><i style="background:var(--ok)"></i>Good to go</span><span><i
+                    style="background:var(--bad)"></i>Base case (on hover)</span><span><i
+                    style="background:var(--edge)"></i>Data flow</span></div>
+        <svg id="g" viewBox="0 0 460 700" role="img" aria-label="StartupForge AI agent pipeline flowchart">
+            <defs>
+                <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6"
+                    orient="auto-start-reverse">
+                    <path d="M0 0L10 5L0 10z" fill="#3b82f6" />
+                </marker>
+            </defs>
+            <g id="edges"></g>
+            <g id="nodes"></g>
+        </svg>
+        <p class="note">Green = ready. Red = base case: a node with no outgoing edges, where the pipeline terminates
+            (Final brief).</p>
+    </main>
+    <script>
+        (function () {
+            var NS = "http://www.w3.org/2000/svg";
+            var N = [
+                { id: "idea", x: 115, y: 30, w: 150, t: "Startup idea", s: "User input", ok: 1 },
+                { id: "search", x: 115, y: 100, w: 150, t: "Search", s: "Plan queries · fetch · chunk", ok: 1 },
+                { id: "research", x: 115, y: 180, w: 150, t: "Research", s: "Customers · pains · risks", ok: 1 },
+                { id: "comp", x: 115, y: 260, w: 150, t: "Competitor", s: "Name must appear in source", ok: 1 },
+                { id: "product", x: 115, y: 340, w: 150, t: "Product", s: "MVP · journey · pricing", ok: 1 },
+                { id: "fin", x: 115, y: 420, w: 150, t: "Finance", s: "Assumptions → projections", ok: 1 },
+                { id: "report", x: 115, y: 500, w: 150, t: "Report", s: "Founder brief", ok: 1 },
+                { id: "critic", x: 115, y: 580, w: 150, t: "Critic", s: "Fact-check citations", ok: 1 },
+                { id: "brief", x: 115, y: 660, w: 150, t: "Final brief", s: "SSE → React dashboard", ok: 1 },
+                { id: "tavily", x: 330, y: 100, w: 120, t: "Tavily", s: "Web search API", ok: 1 },
+                { id: "rag", x: 330, y: 180, w: 120, t: "RAG store", s: "fastembed + pgvector", ok: 1 },
+                { id: "calc", x: 330, y: 420, w: 120, t: "finance.py", s: "Deterministic math", ok: 1 }
+            ];
+            var E = [
+                ["idea", "search", "b", "t"], ["search", "research", "b", "t"], ["research", "comp", "b", "t"], ["comp", "product", "b", "t"],
+                ["product", "fin", "b", "t"], ["fin", "report", "b", "t"], ["report", "critic", "b", "t"], ["critic", "brief", "b", "t"],
+                ["tavily", "search", [[270, 94], [190, 94]]],
+                ["search", "rag", [[190, 108], [230, 108], [230, 168], [270, 168]]],
+                ["rag", "research", [[270, 180], [190, 180]]],
+                ["rag", "comp", [[270, 192], [244, 192], [244, 260], [190, 260]]],
+                ["rag", "critic", [[390, 180], [420, 180], [420, 580], [190, 580]]],
+                ["calc", "fin", [[270, 420], [190, 420]]]
+            ];
+            var D = { t: [0, -1], b: [0, 1], l: [-1, 0], r: [1, 0] }, H = 22;
+            var map = {}, eg = document.getElementById("edges"), ng = document.getElementById("nodes");
+            function el(n, a, p) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e }
+            function anc(n, s) { return s == "t" ? [n.x, n.y - H] : s == "b" ? [n.x, n.y + H] : s == "l" ? [n.x - n.w / 2, n.y] : [n.x + n.w / 2, n.y] }
+            N.forEach(function (n) { map[n.id] = n; n.term = !E.some(function (e) { return e[0] == n.id }) });
+            E.forEach(function (e) {
+                var a = map[e[0]], b = map[e[1]], pts = Array.isArray(e[2]) ? e[2] : [anc(a, e[2]), anc(b, e[3])];
+                var d = "M" + pts[0];
+                for (var i = 1; i < pts.length; i++) {
+                    var c = pts[i], pr = pts[i - 1];
+                    if (i < pts.length - 1) {
+                        var nx = pts[i + 1], r = 8, l1 = Math.hypot(c[0] - pr[0], c[1] - pr[1]), l2 = Math.hypot(nx[0] - c[0], nx[1] - c[1]),
+                        s = [c[0] - (c[0] - pr[0]) / l1 * r, c[1] - (c[1] - pr[1]) / l1 * r], t = [c[0] + (nx[0] - c[0]) / l2 * r, c[1] + (nx[1] - c[1]) / l2 * r];
+                        d += " L" + s + " Q" + c + " " + t;
+                    }
+                    else d += " L" + c;
+                }
+                e.el = el("path", { d: d, "class": "edge", "marker-end": "url(#ar)" }, eg);
+            });
+            N.forEach(function (n) {
+                var g = el("g", { "class": "node", "tabindex": "0" }, ng); n.g = g;
+                el("rect", { x: n.x - n.w / 2, y: n.y - H, width: n.w, height: H * 2, rx: 6 }, g);
+                el("circle", { cx: n.x - n.w / 2 + 10, cy: n.y - H + 10, r: 3, "class": "dot" }, g);
+                el("text", { x: n.x, y: n.y - 3, "class": "t" }, g).textContent = n.t;
+                el("text", { x: n.x, y: n.y + 12, "class": "s" }, g).textContent = n.s;
+                paint(n);
+                g.addEventListener("pointerenter", function () { act(n.id) });
+                g.addEventListener("pointerdown", function () { act(n.id) });
+                g.addEventListener("focus", function () { act(n.id) });
+                g.addEventListener("pointerleave", clear);
+                g.addEventListener("blur", clear);
+
+            });
+            function paint(n) { n.g.setAttribute("class", "node " + (n.ok ? "ok" : "bad") + (n.g.classList.contains("hl") ? " hl" : "")) }
+            function act(id) {
+                var near = {}; near[id] = 1;
+                E.forEach(function (e) {
+                    var on = e[0] == id || e[1] == id;
+                    e.el.setAttribute("class", "edge " + (on ? "on" : "off"));
+                    if (on) { near[e[0]] = 1; near[e[1]] = 1 }
+                });
+                N.forEach(function (n) { var t = n.term && n.id == id; n.g.classList.toggle("hl", !!near[n.id]); n.g.classList.toggle("bad", t); n.g.classList.toggle("ok", !t) });
+            }
+            function clear() {
+                E.forEach(function (e) { e.el.setAttribute("class", "edge") });
+                N.forEach(function (n) { n.g.classList.remove("hl", "bad"); n.g.classList.add("ok") });
+            }
+            document.addEventListener("pointerdown", function (ev) { if (!ev.target.closest(".node")) clear() });
+        })();
+    </script>
+</body>
+
+</html>
