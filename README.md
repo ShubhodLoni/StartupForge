@@ -66,34 +66,82 @@ docker compose up --build
 
 Open http://localhost:8080. Compose starts `pgvector/pgvector:pg16`, the backend (embedding model baked into the image), and the frontend behind nginx (SSE buffering disabled).
 
-## Run locally (Windows PowerShell)
+## Run locally (without Docker)
 
-You need Python 3.12+, Node 20+, a [Groq API key](https://console.groq.com/keys), and for web sources a [Tavily API key](https://app.tavily.com).
+### Prerequisites
 
-**Backend** (terminal 1):
+- **Python 3.12+** (`python --version`)
+- **Node.js 20+** and npm (`node --version`)
+- A **Groq API key** (required): https://console.groq.com/keys
+- A **Tavily API key** (optional but recommended, for web search and real citations): https://app.tavily.com
+- *Optional:* Docker or a local PostgreSQL 16 with pgvector, if you want reports to persist
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/ShubhodLoni/StartupForge StartupForge
+cd StartupForge
+```
+
+### 2. Start the backend (terminal 1)
+
+**Windows (PowerShell):**
 
 ```powershell
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
-copy .env.example .env          # set GROQ_API_KEY and TAVILY_API_KEY
+copy .env.example .env          # then edit .env: set GROQ_API_KEY and TAVILY_API_KEY
 uvicorn app.main:app --reload --port 8000
 ```
 
-Without `DATABASE_URL`, reports and vectors are kept in memory and lost on restart. To persist them, point `DATABASE_URL` at a PostgreSQL with the pgvector extension available. Tables are created automatically.
+If PowerShell blocks `Activate.ps1`, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.
 
-**Frontend** (terminal 2):
+**macOS / Linux:**
 
-```powershell
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+cp .env.example .env            # then edit .env: set GROQ_API_KEY and TAVILY_API_KEY
+uvicorn app.main:app --reload --port 8000
+```
+
+The API is now on http://localhost:8000 (interactive docs at http://localhost:8000/docs). The first run downloads the embedding model (~70 MB), so it can take a little longer.
+
+### 3. Start the frontend (terminal 2)
+
+```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Open http://localhost:5173. The badges in the top right show whether the backend is reachable, Groq is configured, and web search is on.
+Open **http://localhost:5173**. The Vite dev server proxies `/api` to `http://localhost:8000` (override with `VITE_PROXY_TARGET`). The badges in the top right show whether the backend is reachable, Groq is configured, and web search is on.
 
-**Rate limits:** a run makes 7 LLM calls. On Groq's free tier you may hit per-minute token limits; the client retries with backoff, so some runs take longer.
+### 4. (Optional) Persist data with PostgreSQL + pgvector
+
+Without `DATABASE_URL`, reports and vectors are kept in memory and lost when the backend restarts. To persist them, start a pgvector database, for example with Docker:
+
+```bash
+docker run -d --name startupforge-db -p 5432:5432 -e POSTGRES_USER=startupforge -e POSTGRES_PASSWORD=startupforge -e POSTGRES_DB=startupforge pgvector/pgvector:pg16
+```
+
+Then uncomment this line in `backend/.env` and restart the backend. Tables are created automatically.
+
+```
+DATABASE_URL=postgresql://startupforge:startupforge@localhost:5432/startupforge
+```
+
+### Troubleshooting
+
+- **"Groq not configured" badge:** check `GROQ_API_KEY` in `backend/.env`, then restart uvicorn.
+- **Web search off:** set `TAVILY_API_KEY`. Without it, reports run on LLM knowledge only and are marked unverified.
+- **CORS errors:** if the frontend runs on a different origin than `http://localhost:5173`, add it to `CORS_ORIGINS` in `backend/.env`.
+- **Port already in use:** change `--port 8000` (and set `VITE_PROXY_TARGET` to match), or stop the other process.
+- **Rate limits:** a run makes 7 LLM calls. On Groq's free tier you may hit per-minute token limits; the client retries with backoff, so some runs take longer.
 
 ## API
 
